@@ -16,12 +16,12 @@ class SimulatorConfiguration(NamedTuple):
 
     Attributes:
         dt: timestep size
-        n_steps: number of steps to simulate
-        record_every: how often to record the state
+        num_steps: number of steps to simulate
+        record_interval: how often to record the state
         integrator: key into INTEGRATOR_REGISTRY (e.g. 'velocity_verlet', 'rk4')
-        max_val: threshold for when it becomes invalid
-        bounds_keys: which state keys to check for validity
-        derivatives: routing map defining derivative relationships between state variables
+        divergence_threshold: threshold for when it becomes invalid
+        validation_keys: which state keys to check for validity
+        derivative_map: routing map defining derivative relationships between state variables
         q_key: position-like state variable key, only for symplectic integrators
         p_key: momentum-like state variable key, only for symplectic integrators
     """
@@ -29,9 +29,9 @@ class SimulatorConfiguration(NamedTuple):
     num_steps: int
     record_interval: int
     integrator: str 
-    max_val: float
-    bounds_keys: tuple
-    derivatives: dict
+    divergence_threshold: float
+    validation_keys: tuple
+    derivative_map: dict
     q_key: str
     p_key: str
 
@@ -43,11 +43,11 @@ class TrajectoryResult(NamedTuple):
 
     Attributes:
         states: the recorded trajectory, each value has (n_recorded, num of particles, dimensions)
-        d_states: how fast things are changing at each recorded moment
+        state_derivatives: how fast things are changing at each recorded moment
         observables: extra things to track for debugging
-        valid: shape (n_recorded,) bool mask for whether the trajectory is valid at each recorded step
+        is_valid: shape (n_recorded,) bool mask for whether the trajectory is valid at each recorded step
     """
     states: Dict[str, jnp.ndarray]
-    d_states: Dict[str, jnp.ndarray]
+    state_derivatives: Dict[str, jnp.ndarray]
     observables: Dict[str, jnp.ndarray]
-    valid: jnp.ndarray
+    is_valid: jnp.ndarray
