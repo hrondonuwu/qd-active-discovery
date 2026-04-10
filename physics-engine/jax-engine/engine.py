@@ -4,11 +4,10 @@ _build_derivative_function - reads the derivatives routing map, returns compute_
 _build_observable_function - reads obs_keys, returns compute_observables(state, params) -> dict of values
 _is_state_valid - returns True if state is within bounds
 single_rollout - runs one trajectory
-batched_rollout - runs B trajectories in parallel via vmap, compiled once via cache
+batched_rollout - runs B trajectories in parallel via vmap
 """
 
 from __future__ import annotations
-from typing import Dict, Callable
 
 import jax
 import jax.numpy as jnp
@@ -20,9 +19,6 @@ from jax_engine.forces import FORCE_REGISTRY
 from jax_engine.integrators import INTEGRATOR_REGISTRY
 from jax_engine.observables import OBSERVABLE_REGISTRY
 
-# Compiled rollout functions are cached here so batched_rollout
-# never recompiles for the same (obs_keys, batch_size) combination
-_ROLLOUT_CACHE: Dict[tuple, Callable] = {}
 
 def _build_derivative_function(derivative_map: dict):
     """
@@ -166,6 +162,10 @@ def single_rollout(
         is_valid=all_valid,
     )
 
+# Defined at module level so JAX only compiles this once. If this were created
+# inside batched_rollout, JAX would see a new function object on every call and
+# recompile from scratch each time.
+_vmapped_rollout = jax.jit(jax.vmap(single_rollout, in_axes=(0, 0, None, None)))
 def batched_rollout(
     batch_initial_state: dict,
     batch_params: dict,
@@ -174,16 +174,5 @@ def batched_rollout(
 ) -> TrajectoryResult:
     """
     runs B simulations in parallel using vmap
-    compiles the batched function once and caches it
-    subsequent calls with the same (obs_keys, batch_size) skip recompilation
     """
-    first_key  = next(iter(batch_initial_state))
-    batch_size = batch_initial_state[first_key].shape[0]
-
-    cache_key  = (observable_keys, batch_size)
-    if cache_key not in _ROLLOUT_CACHE:
-        _ROLLOUT_CACHE[cache_key] = jax.jit(
-            jax.vmap(single_rollout, in_axes=(0, 0, None, None))
-        )
-
-    return _ROLLOUT_CACHE[cache_key](batch_initial_state, batch_params, cfg, observable_keys)
+    return _vmapped_rollout(batch_initial_state, batch_params, cfg, observable_keys)
