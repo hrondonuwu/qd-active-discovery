@@ -13,6 +13,7 @@ from typing import Dict, Callable
 import jax
 import jax.numpy as jnp
 import jax.lax as lax
+from jax.tree_util import tree_map
 
 from jax_engine.types import SimulatorConfiguration, TrajectoryResult
 from jax_engine.forces import FORCE_REGISTRY
@@ -132,7 +133,7 @@ def single_rollout(
         still_valid = is_valid & _is_state_valid(candidate, cfg)
 
         # if still valid: accept candidate. If not: freeze at current state.
-        frozen_state = jax.tree_util.tree_map(
+        frozen_state = tree_map(
             lambda new, old: jnp.where(still_valid, new, old),
             candidate, state,
         )

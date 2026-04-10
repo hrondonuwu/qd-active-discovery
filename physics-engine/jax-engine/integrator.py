@@ -7,7 +7,7 @@ Currently only three integrators:
 """
 import jax
 import jax.numpy as jnp
-from jax import tree_util
+from jax.tree_util import tree_map
 from jax_engine.types import State, Parameters
 from typing import Callable
 
